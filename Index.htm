@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>StarFight</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>🚀 STARFIGHT 🚀</header>
+  <div id="hud">
+    <p>Puntos: <span id="score">0</span></p>
+    <p>Vidas: <span id="lives">3</span></p>
+    <p>Nivel: <span id="level">1</span></p>
+  </div>
+
+  <canvas id="game" width="480" height="720"></canvas>
+
+  <div id="msg" class="hidden">
+    <div class="card">
+      <h2>StarFight</h2>
+      <p>Mueve tu nave, esquiva y dispara a los invasores.</p>
+      <button id="startBtn">Iniciar juego</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
