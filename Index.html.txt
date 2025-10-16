@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FightStar — Historia</title>
+  <style>
+    /* Estilos simples y limpios (rojo y blanco) */
+    :root{
+      --bg:#fff;
+      --accent:#c41b1b; /* rojo */
+      --muted:#6b6b6b;
+      --card:#fff7f7;
+      --radius:12px;
+      --maxw:900px;
+    }
+    body{
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      background: linear-gradient(180deg, #fff 0%, #fffaf9 100%);
+      color:#222;
+      margin:0;
+      padding:32px;
+      display:flex;
+      justify-content:center;
+    }
+    .container{
+      width:100%;
+      max-width:var(--maxw);
+      background:var(--card);
+      border-radius:var(--radius);
+      box-shadow:0 8px 30px rgba(0,0,0,0.08);
+      padding:28px;
+      border:1px solid rgba(196,27,27,0.08);
+    }
+    header{
+      display:flex;
+      gap:16px;
+      align-items:center;
+    }
+    .logo{
+      width:72px;
+      height:72px;
+      border-radius:10px;
+      background:linear-gradient(135deg,var(--accent), #ff6b6b);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:white;
+      font-weight:700;
+      font-size:20px;
+      box-shadow:0 6px 18px rgba(196,27,27,0.18);
+    }
+    h1{ margin:0; font-size:24px; }
+    p.lead{ margin:8px 0 18px; color:var(--muted); }
+    .section{ margin-top:18px; padding-top:14px; border-top:1px dashed rgba(0,0,0,0.04); }
+    h2{ color:var(--accent); margin:0 0 8px; font-size:18px; }
+    .meta { color:var(--muted); font-size:14px; margin-bottom:10px; }
+    ul.roles{ padding-left:20px; margin:6px 0 0; }
+    blockquote{
+      margin:18px 0; padding:14px 18px; border-left:4px solid var(--accent);
+      background:#fff5f5; color:#5a2a2a; border-radius:8px;
+    }
+    footer{ margin-top:20px; font-size:13px; color:var(--muted); text-align:right; }
+    @media (max-width:560px){
+      body{ padding:18px; }
+      .logo{ width:58px; height:58px; font-size:18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">FS</div>
+      <div>
+        <h1>FightStar ⚔️</h1>
+        <p class="lead">Concepto e historia — rama <strong>documentacion</strong></p>
+      </div>
+    </header>
+
+    <section class="section">
+      <h2>🌌 Historia del videojuego</h2>
+      <p class="meta">Ambientación | Ciencia ficción — Aventura espacial</p>
+      <p>
+        En un futuro lejano, la galaxia quedó fragmentada tras la caída de la antigua Federación Estelar.
+        Los fragmentos de energía cósmica llamados <em>Estrellas Alfa</em> emergieron de las ruinas: poderosas, inestables
+        y codiciadas por facciones de todo el universo.
+      </p>
+      <p>
+        Lyra es una piloto joven con un origen envuelto en secretos. Tras perder a su familia en la guerra de los fragmentos,
+        se une a <strong>The Sparks</strong>, un grupo de rebeldes que se niega a dejar que el tiránico imperio de <strong>Zarthon</strong>
+        centralice el poder. La misión de Lyra: recuperar las Estrellas Alfa antes de que Zarthon complete su máquina de conquista.
+      </p>
+      <p>
+        Viajarás por planetas olvidados, estaciones espaciales en ruinas y cinturones de asteroides. En cada nivel
+        descubrirás piezas del pasado de Lyra y pistas sobre el origen real de las Estrellas Alfa. El viaje combina combate frenético,
+        plataformas en gravedad variable y exploración de secretos ocultos.
+      </p>
+    </section>
+
+    <section class="section">
+      <h2>🕹️ Mecánica del juego</h2>
+      <p class="meta">Tipo: Arcade — Plataformas espaciales</p>
+      <p>
+        FightStar es un arcade de plataformas y acción. El jugador controla la nave de Lyra en niveles horizontales y verticales,
+        donde debe esquivar peligros ambientales, derrotar enemigos y recolectar energía para mejorar habilidades.
+      </p>
+      <ul>
+        <li>Recolección de energía para mejoras (velocidad, escudo, disparo especial).</li>
+        <li>Salto y maniobra en gravedad variable (niveles con zonas de baja/alta gravedad).</li>
+        <li>Jefes con fases múltiples que requieren patrones y estrategia.</li>
+        <li>Secretos y rutas alternas para aumentar rejugabilidad.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>👥 Roles del equipo</h2>
+      <p class="meta">Equipo de trabajo</p>
+      <ul class="roles">
+        <li><strong>Arleth Carmona</strong> — Líder del repositorio y documentación.</li>
+        <li><strong>Kimberli Montaño</strong> — Diseñadora de interfaz y escenarios.</li>
+        <li><strong>Diego Rosales</strong> — Guionista y creador de personajes.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>🎯 Objetivo del proyecto</h2>
+      <p>
+        Organizar y versionar los documentos, bocetos e ideas del videojuego usando GitKraken y GitHub.
+        No se busca desarrollar la versión final del juego, sino construir una estructura documental, visual y
+        técnica que permita al equipo iterar y coordinarse con control de versiones.
+      </p>
+
+      <blockquote>
+        “Las estrellas no pertenecen a nadie, pero solo los valientes pueden alcanzarlas.” ✨
+      </blockquote>
+    </section>
+
+    <footer>
+      Archivo: <code>historia_juego.html</code> — Rama: <strong>documentacion</strong>
+    </footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Starfight</title>
+<style>
+  :root {
+    --bg:#0a0f1f;
+    --fg:#e6edf3;
+    --accent:#6ae3ff;
+    --accent2:#ff5b6b;
+    --accent3:#9eff6a;
+  }
+  html,body{
+    margin:0; height:100%; background: radial-gradient(1200px 800px at 50% 20%, #17223d, var(--bg));
+    color:var(--fg); font-family: system-ui, Arial, sans-serif; overflow:hidden;
+  }
+  header{
+    position:fixed; top:8px; left:50%; transform:translateX(-50%);
+    font-weight:700; letter-spacing:.1em; text-shadow:0 0 8px #0008;
+    user-select:none; pointer-events:none;
+  }
+  #wrap{
+    position:fixed; inset:0; display:grid; place-items:center;
+  }
+  canvas{
+    background: transparent; box-shadow: 0 10px 30px #0008, inset 0 0 40px #0006;
+    border:1px solid #ffffff22; border-radius:12px;
+    max-width: 95vw; max-height: 90vh;
+  }
+  #hud{
+    position:fixed; top:8px; right:10px; font-size:14px;
+    text-align:right; text-shadow:0 1px 2px #000a;
+  }
+  #msg{
+    position:fixed; inset:0; display:none; place-items:center; text-align:center;
+    background: linear-gradient(#00000060,#00000090);
+  }
+  #msg .card{
+    background:#0f1730; border:1px solid #ffffff22; border-radius:14px; padding:22px 18px; width:min(92vw, 440px);
+    box-shadow: 0 10px 40px #000c, inset 0 0 20px #0008;
+  }
+  .btn{
+    display:inline-block; margin-top:12px; padding:10px 16px; border-radius:10px; border:1px solid #ffffff22;
+    color:var(--fg); background: linear-gradient(180deg,#1b2a55,#111a37); cursor:pointer; user-select:none;
+    text-decoration:none;
+  }
+  .btn:hover{ filter:brightness(1.1); }
+  .kbd{ padding:2px 6px; border:1px solid #ffffff33; border-radius:6px; background:#0c1430; font-size:12px; }
+  /* Controles táctiles */
+  #touch{
+    position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+    display:flex; gap:10px; align-items:center; z-index:10;
+  }
+  .tbtn{
+    width:68px; height:68px; border-radius:50%; border:1px solid #ffffff22;
+    background:linear-gradient(180deg,#20325f,#0e1733); box-shadow: 0 6px 18px #000a;
+    display:grid; place-items:center; font-weight:700; color:#dfe8ff; user-select:none;
+    touch-action:none;
+  }
+  @media (min-width:900px){
+    #touch{ display:none; }
+  }
+  footer{
+    position:fixed; left:10px; bottom:8px; font-size:12px; opacity:.8; text-shadow:0 1px 2px #000c;
+  }
+</style>
+</head>
+<body>
+  <header>STARFIGHT</header>
+  <div id="hud">Puntos: <span id="score">0</span><br/>Vidas: <span id="lives">3</span><br/>Nivel: <span id="level">1</span></div>
+  <div id="wrap"><canvas id="game" width="480" height="720"></canvas></div>
+
+  <div id="msg">
+    <div class="card">
+      <h2 style="margin:0 0 8px">Starfight</h2>
+      <p style="margin:0 0 12px">Mueve tu nave, esquiva y dispara a los invasores.</p>
+      <p style="font-size:14px; opacity:.9">
+        Controles: <span class="kbd">←</span> <span class="kbd">→</span> o <span class="kbd">A</span>/<span class="kbd">D</span> &nbsp;|&nbsp;
+        Disparo: <span class="kbd">Espacio</span> &nbsp;|&nbsp; Pausa: <span class="kbd">P</span>
+      </p>
+      <div><a class="btn" id="startBtn">Iniciar</a></div>
+    </div>
+  </div>
+
+  <div id="touch" aria-hidden="true">
+    <div class="tbtn" data-dir="-1">◀</div>
+    <div class="tbtn" data-fire="1">●</div>
+    <div class="tbtn" data-dir="1">▶</div>
+  </div>
+
+  <footer>© 2025 Starfight — hecho con ❤️ y canvas</footer>
+
+<script>
+(function(){
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const livesEl = document.getElementById('lives');
+  const levelEl = document.getElementById('level');
+  const msg = document.getElementById('msg');
+  const startBtn = document.getElementById('startBtn');
+  const touch = document.getElementById('touch');
+
+  // --- Estado del juego ---
+  const state = {
+    running:false, paused:false,
+    score:0, lives:3, level:1,
+    t:0, last:0,
+    keys: { left:false, right:false, fire:false },
+    bullets:[], enemies:[], ebullets:[], particles:[],
+    ship:null, waveCooldown:0, fireCooldown:0
+  };
+
+  // --- Utilidades ---
+  const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
+  const rand = (a,b)=>Math.random()*(b-a)+a;
+  const hitRect = (a,b)=> a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
+
+  // --- Entidades ---
+  function createShip(){
+    return { x: canvas.width/2-16, y: canvas.height-80, w:32, h:28, speed: 280, inv:0 };
+  }
+  function createBullet(x,y,v= -480){ return { x, y, r:3, vy:v, alive:true } }
+  function createEnemy(x,y,speed, hp=1, type=0){
+    return { x, y, w:28, h:22, speed, hp, type, t:0, alive:true, firet: rand(0.6,2.2) };
+  }
+  function createParticle(x,y, vx, vy, life, col){
+    return { x,y,vx,vy,life, col, t:0, alive:true };
+  }
+
+  // --- Inicialización / reinicio ---
+  function reset(){
+    state.score=0; state.lives=3; state.level=1;
+    state.bullets.length=0; state.enemies.length=0; state.ebullets.length=0; state.particles.length=0;
+    state.ship = createShip(); state.waveCooldown=0; state.fireCooldown=0;
+    spawnWave();
+  }
+
+  function spawnWave(){
+    const cols = 7, rows = 3 + Math.min(4, state.level-1);
+    const gapX = 56, gapY = 46;
+    const offX = (canvas.width - (cols-1)*gapX)/2 - 14;
+    const speed = 20 + state.level*6;
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        const hp = (state.level>=5 && Math.random()<0.2)?2:1;
+        const type = (Math.random()<0.3)?1:0;
+        state.enemies.push(createEnemy(offX + c*gapX, 80 + r*gapY, speed, hp, type));
+      }
+    }
+  }
+
+  // --- Entrada teclado ---
+  window.addEventListener('keydown', (e)=>{
+    if(e.code==='ArrowLeft' || e.code==='KeyA') state.keys.left=true;
+    if(e.code==='ArrowRight'|| e.code==='KeyD') state.keys.right=true;
+    if(e.code==='Space') { state.keys.fire=true; e.preventDefault(); }
+    if(e.code==='KeyP'){ state.paused = !state.paused; }
+  });
+  window.addEventListener('keyup', (e)=>{
+    if(e.code==='ArrowLeft' || e.code==='KeyA') state.keys.left=false;
+    if(e.code==='ArrowRight'|| e.code==='KeyD') state.keys.right=false;
+    if(e.code==='Space') state.keys.fire=false;
+  });
+
+  // --- Entrada táctil ---
+  function bindTouch(){
+    let leftPressed=false, rightPressed=false, firePressed=false;
+    touch.querySelectorAll('.tbtn').forEach(btn=>{
+      const dir = btn.dataset.dir? Number(btn.dataset.dir):0;
+      const isFire = !!btn.dataset.fire;
+      const on = (v)=> {
+        if(isFire){ state.keys.fire=v; firePressed=v; }
+        else if(dir===-1){ state.keys.left=v; leftPressed=v; }
+        else if(dir===1){ state.keys.right=v; rightPressed=v; }
+      };
+      const start = (e)=>{ e.preventDefault(); on(true); };
+      const end = (e)=>{ e.preventDefault(); on(false); };
+      btn.addEventListener('pointerdown', start);
+      btn.addEventListener('pointerup', end);
+      btn.addEventListener('pointerleave', end);
+      btn.addEventListener('pointercancel', end);
+    });
+  }
+  bindTouch();
+
+  // --- Lógica principal ---
+  function update(dt){
+    if(state.paused) return;
+
+    state.t += dt;
+
+    // Nave
+    const s = state.ship;
+    const dir = (state.keys.right?1:0) - (state.keys.left?1:0);
+    s.x = clamp(s.x + dir*s.speed*dt, 8, canvas.width - s.w - 8);
+    if(s.inv>0) s.inv -= dt;
+
+    // Disparo jugador
+    state.fireCooldown -= dt;
+    if(state.keys.fire && state.fireCooldown<=0){
+      const bx = s.x + s.w/2, by = s.y - 4;
+      state.bullets.push(createBullet(bx, by));
+      // pequeño fogonazo
+      for(let i=0;i<4;i++){
+        state.particles.push(createParticle(bx, by, rand(-30,30), rand(-20,-60), rand(.12,.24), 'var(--accent)'));
+      }
+      state.fireCooldown = 0.18;
+    }
+
+    // Actualizar balas jugador
+    state.bullets.forEach(b=>{
+      b.y += b.vy*dt;
+      if(b.y < -10) b.alive=false;
+    });
+    state.bullets = state.bullets.filter(b=>b.alive);
+
+    // Enemigos
+    let anyAlive=false;
+    state.enemies.forEach(e=>{
+      e.t += dt;
+      // movimiento: zigzag suave
+      const dx = Math.sin(e.t*1.8 + e.x*0.02)*24*dt;
+      e.x += dx;
+      e.y += e.speed*dt*0.18;
+      // fuego enemigo
+      e.firet -= dt;
+      if(e.firet<=0){
+        e.firet = rand(1.0, 2.2) - Math.min(0.8, state.level*0.08);
+        // bala hacia la nave
+        const cx = e.x + e.w/2, cy = e.y + e.h;
+        const vy = 120 + state.level*25;
+        state.ebullets.push({ x:cx, y:cy, vy, r:3.5, alive:true });
+      }
+      // si baja demasiado, penaliza
+      if(e.y > canvas.height - 160 && e.alive){
+        // presión: empuja al jugador a resolver la oleada
+      }
+      if(e.alive) anyAlive=true;
+    });
+    state.enemies = state.enemies.filter(e=>e.alive && e.y<canvas.height+60);
+
+    // Colisiones bala-jugador
+    state.ebullets.forEach(b=>{
+      b.y += b.vy*dt;
+      if(b.y>canvas.height+10) b.alive=false;
+      if(s.inv<=0 && hitRect({x:s.x,y:s.y,w:s.w,h:s.h}, {x:b.x-3,y:b.y-3,w:6,h:6})){
+        b.alive=false;
+        boom(s.x+s.w/2, s.y+s.h/2, 'var(--accent2)');
+        state.lives--;
+        s.inv=1.2;
+        if(state.lives<=0){ gameOver(); }
+        updateHUD();
+      }
+    });
+    state.ebullets = state.ebullets.filter(b=>b.alive);
+
+    // Colisiones balas-enemigos
+    state.bullets.forEach(b=>{
+      state.enemies.forEach(e=>{
+        if(e.alive && hitRect({x:b.x-2,y:b.y-6,w:4,h:12},{x:e.x,y:e.y,w:e.w,h:e.h})){
+          b.alive=false;
+          e.hp--;
+          boom(b.x, b.y, 'var(--accent3)');
+          if(e.hp<=0){
+            e.alive=false;
+            state.score += 10 + 2*state.level;
+            updateHUD();
+          }
+        }
+      });
+    });
+
+    // Partículas
+    state.particles.forEach(p=>{
+      p.t += dt; p.x += p.vx*dt; p.y += p.vy*dt; if(p.t>p.life) p.alive=false;
+    });
+    state.particles = state.particles.filter(p=>p.alive);
+
+    // Siguiente oleada
+    if(!anyAlive){
+      state.waveCooldown -= dt;
+      if(state.waveCooldown<=0){
+        state.level++;
+        updateHUD();
+        spawnWave();
+        state.waveCooldown = 0.25;
+      }
+    }
+  }
+
+  function boom(x,y,col){
+    for(let i=0;i<16;i++){
+      const a = Math.random()*Math.PI*2;
+      const sp = rand(40, 160);
+      state.particles.push(createParticle(x, y, Math.cos(a)*sp, Math.sin(a)*sp, rand(.25,.6), col));
+    }
+  }
+
+  // --- Dibujo ---
+  function draw(){
+    // fondo estrellado
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    drawStars();
+    // nave
+    const s = state.ship;
+    const flick = (s.inv>0 && Math.floor(state.t*20)%2===0);
+    if(!flick) drawShip(s.x, s.y);
+
+    // balas jugador
+    ctx.fillStyle = '#aeeaff';
+    state.bullets.forEach(b=>{
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
+      // rastro
+      ctx.fillRect(b.x-1, b.y, 2, 10);
+    });
+
+    // enemigos
+    state.enemies.forEach(e=>{
+      drawEnemy(e);
+    });
+
+    // balas enemigas
+    ctx.fillStyle = '#ff8592';
+    state.ebullets.forEach(b=>{
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
+    });
+
+    // partículas
+    state.particles.forEach(p=>{
+      const k = 1 - (p.t/p.life);
+      ctx.globalAlpha = clamp(k, 0, 1);
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue(p.col?.match(/--\w+/)?.[0]?.slice(2)||'') || p.col || '#fff';
+      ctx.beginPath(); ctx.arc(p.x, p.y, 2.5+3*(1-k), 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+
+    // borde sutil
+    ctx.strokeStyle = '#ffffff18';
+    ctx.strokeRect(6,6,canvas.width-12, canvas.height-12);
+  }
+
+  function drawShip(x,y){
+    // cuerpo
+    ctx.save();
+    ctx.translate(x+16,y+14);
+    // brillo base
+    const g = ctx.createRadialGradient(0,0,4,0,0,20);
+    g.addColorStop(0,'#9dd0ff'); g.addColorStop(1,'#2b5b9e');
+    ctx.fillStyle=g;
+    // fuselaje
+    pathPoly([[-12,10],[0,-14],[12,10],[5,8],[0,12],[-5,8]]);
+    ctx.fill();
+    // cabina
+    ctx.fillStyle='#6ae3ff';
+    pathPoly([[-6,2],[0,-6],[6,2],[0,4]]);
+    ctx.fill();
+    // alas
+    ctx.fillStyle='#a6ffd0';
+    pathPoly([[-12,10],[-20,14],[-10,16],[-4,10]]);
+    pathPoly([[12,10],[20,14],[10,16],[4,10]]);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawEnemy(e){
+    ctx.save();
+    ctx.translate(e.x+e.w/2, e.y+e.h/2);
+    const pulse = 1 + Math.sin(e.t*6)*0.05;
+    ctx.scale(pulse, pulse);
+    // núcleo
+    ctx.fillStyle = e.type? '#ffd18a' : '#ff8aa3';
+    pathPoly([[-12,-8],[0,-12],[12,-8],[16,0],[12,8],[0,12],[-12,8],[-16,0]]);
+    ctx.fill();
+    // ojo
+    ctx.fillStyle = '#0a0f1f';
+    ctx.beginPath(); ctx.arc(0,0,4,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  function pathPoly(points){
+    ctx.beginPath();
+    ctx.moveTo(points[0][0], points[0][1]);
+    for(let i=1;i<points.length;i++) ctx.lineTo(points[i][0], points[i][1]);
+    ctx.closePath();
+  }
+
+  // Estrellas parallax
+  const stars = Array.from({length:120}).map(()=>({x:Math.random()*480,y:Math.random()*720, s: rand(0.4,1.8)}));
+  function drawStars(){
+    ctx.fillStyle='#ffffff10';
+    stars.forEach(st=>{
+      st.y += st.s*0.8; if(st.y>canvas.height) st.y = -rand(0,40), st.x = rand(0,canvas.width);
+      ctx.fillRect(st.x, st.y, 2, 2);
+    });
+  }
+
+  // --- Bucle ---
+  function loop(ts){
+    if(!state.running){ return; }
+    const now = ts/1000;
+    const dt = state.last ? clamp(now-state.last, 0, 1/20) : 0;
+    state.last = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  function updateHUD(){
+    scoreEl.textContent = state.score;
+    livesEl.textContent = state.lives;
+    levelEl.textContent = state.level;
+  }
+
+  function gameOver(){
+    state.running=false;
+    showMessage(
+      `<h2 style="margin:0 0 8px">¡Game Over!</h2>
+       <p style="margin:0 0 8px">Puntuación: <strong>${state.score}</strong> · Nivel alcanzado: <strong>${state.level}</strong></p>
+       <div><a class="btn" id="againBtn">Jugar de nuevo</a></div>`
+    );
+    document.getElementById('againBtn')?.addEventListener('click', start);
+  }
+
+  function showMessage(html){
+    msg.style.display='grid';
+    msg.querySelector('.card').innerHTML = html;
+  }
+
+  function start(){
+    msg.style.display='none';
+    reset(); updateHUD();
+    state.running=true; state.paused=false; state.last=0;
+    requestAnimationFrame(loop);
+  }
+
+  // Botón inicial
+  document.getElementById('startBtn').addEventListener('click', start);
+
+  // Resize manteniendo aspecto
+  function fitCanvas(){
+    // canvas usa CSS para ajustar; no redimensionamos width/height para no recalcular todo
+  }
+  window.addEventListener('resize', fitCanvas);
+  fitCanvas();
+
+  // Mostrar pantalla inicial
+  msg.style.display='grid';
+})();
+</script>
+</body>
+</html>
